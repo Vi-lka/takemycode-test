@@ -1,47 +1,103 @@
-const API_BASE = process.env.API_BASE || 'http://localhost:3001';
-const ITEMS_PER_PAGE = 20;
+import type z from "zod";
+import { FetchItemsParamsSchema, FetchItemsResponseSchema, FetchOrderResponseSchema, FetchSelectedItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
 
-export const fetchItems = async ({ page = 1, limit = ITEMS_PER_PAGE, search = '', useCustomOrder = true }) => {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-    search,
-    useCustomOrder: useCustomOrder.toString()
-  });
-  
-  const response = await fetch(`${API_BASE}/items?${params}`);
-  if (!response.ok) throw new Error('Failed to fetch items');
-  return response.json();
-};
+const API_BASE = import.meta.env.API_BASE || 'http://localhost:3001';
 
-export const fetchStats = async () => {
-  const response = await fetch(`${API_BASE}/stats`);
-  if (!response.ok) throw new Error('Failed to fetch stats');
-  return response.json();
-};
+async function apiRequest<TResponse, TParams = void>(
+  url: string,
+  options: RequestInit = {},
+  responseSchema: z.ZodType<TResponse>,
+  params?: TParams,
+  paramsSchema?: z.ZodType<TParams>,
+): Promise<TResponse> {
+  try {
+    if (params && paramsSchema) {
+      params = paramsSchema.parse(params)
+    }
 
-export const updateSelection = async (selectedIds: string[]) => {
-  const response = await fetch(`${API_BASE}/items/selection`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selectedIds })
-  });
-  if (!response.ok) throw new Error('Failed to update selection');
-  return response.json();
-};
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
 
-export const updateOrder = async ({ orderedIds = [], isPartialUpdate = false }) => {
-  const response = await fetch(`${API_BASE}/items/order`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderedIds, isPartialUpdate })
-  });
-  if (!response.ok) throw new Error('Failed to update order');
-  return response.json();
-};
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `API request failed with status ${response.status}`)
+    }
 
-export const resetOrder = async () => {
-  const response = await fetch(`${API_BASE}/items/order`, { method: 'DELETE' });
-  if (!response.ok) throw new Error('Failed to reset order');
-  return response.json();
-};
+    const data = await response.json()
+
+    try {
+      return responseSchema.parse(data)
+    } catch (validationError) {
+      console.error("API response validation failed:", validationError)
+      throw new Error("Invalid API response format")
+    }
+  } catch (error) {
+    console.error(`API request to ${url} failed:`, error)
+    throw error
+  }
+}
+
+export async function fetchItems(params: FetchItemsParams) {
+  const validParams = FetchItemsParamsSchema.parse(params)
+
+  const queryParams = new URLSearchParams({
+    page: validParams.page.toString(),
+    limit: validParams.limit.toString(),
+    search: validParams.search,
+    useCustomOrder: validParams.useCustomOrder.toString(),
+  })
+
+  return apiRequest(
+    `${API_BASE}/api/items?${queryParams}`, 
+    { method: "GET" }, 
+    FetchItemsResponseSchema
+  )
+}
+
+export async function fetchStats() {
+  return apiRequest(`${API_BASE}/api/stats`, { method: "GET" }, StatsResponseSchema)
+}
+
+export async function fetchOrder() {
+  return apiRequest(`${API_BASE}/api/items/order`, { method: "GET" }, FetchOrderResponseSchema)
+}
+
+export async function fetchSelectedItems() {
+  return apiRequest(`${API_BASE}/api/items/selected`, { method: "GET" }, FetchSelectedItemsResponseSchema)
+}
+
+
+export async function updateSelection(params: UpdateSelectionParams) {
+  return apiRequest(
+    `${API_BASE}/api/items/selection`,
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    },
+    UpdateSelectionResponseSchema,
+    params,
+    UpdateSelectionParamsSchema,
+  )
+}
+
+export async function updateOrder(params: UpdateOrderParams) {
+  return apiRequest(
+    `${API_BASE}/api/items/order`,
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    },
+    UpdateOrderResponseSchema,
+    params,
+    UpdateOrderParamsSchema,
+  )
+}
+
+export async function resetOrder() {
+  return apiRequest(`${API_BASE}/api/items/order`, { method: "DELETE" }, ResetOrderResponseSchema)
+}
