@@ -125,7 +125,7 @@ const reorderedItems = data.items
 
   res.json({
     totalItems: data.items.length,
-    selectedItems: data.selectedItems.size,
+    selectedItems: data.selectedItems,
     reorderedItems: reorderedItems,
     reorderedCount: reorderedItems.length
   });

@@ -1,7 +1,7 @@
 import { fetchItems } from '@/lib/api'
 import { ITEMS_PER_PAGE } from '@/lib/const'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { GripVertical, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -13,6 +13,7 @@ import { ScrollArea } from '../ui/scroll-area'
 import { useOrderMutation, useSelectionMutation } from './api/mutations'
 import { arrayMove } from "@dnd-kit/sortable"
 import type { Item } from '@/lib/schema'
+import { useItemsStore } from './api/items-store'
 
 export default function List({
   className
@@ -20,7 +21,7 @@ export default function List({
   className?: string
 }) {
   const [searchQuery] = useSearch()
-  const [localItems, setLocalItems] = useState<Item[]>([])
+  const { localItems, setLocalItems } = useItemsStore()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery({
     queryKey: ["listData", searchQuery],
@@ -45,7 +46,7 @@ export default function List({
   // Sync local items with server items
   useEffect(() => {
     setLocalItems(serverItems)
-  }, [serverItems])
+  }, [serverItems, setLocalItems])
 
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -76,9 +77,6 @@ export default function List({
   const handleSelect = (id: number, selected: boolean) => {
     const newSelection = selected ? [id] : []
     const newUnselection = selected ? [] : [id];
-
-    console.log("newSelection: ", newSelection)
-    console.log("newUnselection: ", newUnselection)
 
     selectionMutation.mutate({selectedIds: newSelection, unSelectedIds: newUnselection})
   }
@@ -229,20 +227,6 @@ export default function List({
           </div>
         )}
       </ScrollArea>
-      {/* Stats */}
-      {/* <div className="p-4 border-t bg-muted/50">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {allItems.length} items
-            {debouncedSearchQuery && ` (filtered by "${debouncedSearchQuery}")`}
-            {stats && ` • Total: ${stats.totalItems}`}
-          </span>
-          <div className="flex items-center gap-4">
-            {stats?.hasCustomOrder && <span>Using custom order</span>}
-            <span>{hasNextPage ? "Scroll for more" : "All items loaded"}</span>
-          </div>
-        </div>
-      </div> */}
     </div>
   )
 }

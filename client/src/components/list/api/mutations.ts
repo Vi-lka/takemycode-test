@@ -1,4 +1,4 @@
-import { updateOrder, updateSelection } from "@/lib/api"
+import { resetOrder, updateOrder, updateSelection } from "@/lib/api"
 import type { FetchItemsResponse } from "@/lib/schema"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -105,11 +105,64 @@ export function useOrderMutation(searchQuery: string) {
       }
       toast.error("Error updating order", {
         description: err instanceof Error ? err.message : "An unknown error occurred",
-        duration: Infinity
       })
     },
     onSuccess: () => {
       toast.success("Order updated", {
+        description: "Items have been reordered successfully",
+      })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["listData", searchQuery] })
+      queryClient.invalidateQueries({ queryKey: ["stats", searchQuery] })
+    },
+  })
+}
+
+export function useResetOrderMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: resetOrder,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["listData"] })
+
+      const previousData = queryClient.getQueryData(["listData"])
+
+      // Optimistically update the UI
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      queryClient.setQueryData(["listData"], (oldData: any) => {
+        if (!oldData) return oldData
+
+        const updatedPages = oldData.pages.map((page: FetchItemsResponse) => ({
+          ...page,
+          items: page.items
+            .map((item) => ({
+              ...item,
+              index: item.id - 1
+            }))
+            .sort((a, b) => a.index - b.index),
+        }))
+
+        return {
+          ...oldData,
+          pages: updatedPages,
+        }
+      })
+
+      // Return a context object with the snapshotted value
+      return { previousData }
+    },
+    onError: (err, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["listData"], context.previousData)
+      }
+      toast.error("Error resetting order", {
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+      })
+    },
+    onSuccess: () => {
+      toast.success("Order reset", {
         description: "Items have been reordered successfully",
       })
     },

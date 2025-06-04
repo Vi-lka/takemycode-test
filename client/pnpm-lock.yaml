@@ -74,6 +74,9 @@ importers:
       zod:
         specifier: ^3.25.49
         version: 3.25.49
+      zustand:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/react@19.1.6)(react@19.1.0)
     devDependencies:
       '@eslint/js':
         specifier: ^9.25.0
@@ -1759,6 +1762,24 @@ packages:
   zod@3.25.49:
     resolution: {integrity: sha512-JMMPMy9ZBk3XFEdbM3iL1brx4NUSejd6xr3ELrrGEfGb355gjhiAWtG3K5o+AViV/3ZfkIrCzXsZn6SbLwTR8Q==}
 
+  zustand@5.0.5:
+    resolution: {integrity: sha512-mILtRfKW9xM47hqxGIxCv12gXusoY/xTSHBYApXozR0HmQv299whhBeeAcRy+KrPPybzosvJBCOmVjq6x12fCg==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
 snapshots:
 
   '@ampproject/remapping@2.3.0':
@@ -3230,3 +3251,8 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@3.25.49: {}
+
+  zustand@5.0.5(@types/react@19.1.6)(react@19.1.0):
+    optionalDependencies:
+      '@types/react': 19.1.6
+      react: 19.1.0
