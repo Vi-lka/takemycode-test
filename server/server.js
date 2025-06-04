@@ -7,13 +7,14 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+
 let data = {
   items: Array.from({ length: 1000000 }, (_, i) => ({
     id: i + 1,
     value: `Item ${i + 1}`,
-    selected: false
+    selected: false,
+    index: i
   })),
-  customOrder: null,
   selectedItems: new Set()
 };
 
@@ -31,17 +32,9 @@ app.get('/api/items', (req, res) => {
   
   let filteredItems;
   
-  let baseItems;
-  if (useCustomOrder === 'true' && data.customOrder) {
-    baseItems = data.customOrder
-      .map(id => data.items.find(item => item.id === id))
-      .filter(Boolean);
-    
-    const customOrderIds = new Set(data.customOrder);
-    const remainingItems = data.items.filter(item => !customOrderIds.has(item.id));
-    baseItems = [...baseItems, ...remainingItems];
-  } else {
-    baseItems = [...data.items];
+  let baseItems = [...data.items];
+  if (useCustomOrder === 'true') {
+    baseItems.sort((a, b) => a.index - b.index);
   }
   
   if (search) {
@@ -86,59 +79,55 @@ app.get('/api/items/selected', (req, res) => {
 });
 
 app.post('/api/items/order', (req, res) => {
-  const { orderedIds, isPartialUpdate = false } = req.body;
+  const { orderedItems } = req.body;
   
-  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+  if (!Array.isArray(orderedItems) || orderedItems.length === 0) {
     return res.status(400).json({ success: false, message: 'Invalid order data' });
   }
-  
-  if (isPartialUpdate && data.customOrder) {
-    const orderedIdsSet = new Set(orderedIds);
-    
-    const filteredOrder = data.customOrder.filter(id => !orderedIdsSet.has(id));
-    
-    const firstOrderedId = orderedIds[0];
-    const insertPosition = Math.max(0, data.customOrder.indexOf(firstOrderedId));
-    
-    const beforeInsert = filteredOrder.slice(0, insertPosition);
-    const afterInsert = filteredOrder.slice(insertPosition);
-    data.customOrder = [...beforeInsert, ...orderedIds, ...afterInsert];
-  } else {
-    data.customOrder = [...orderedIds];
-    
-    const customOrderIds = new Set(orderedIds);
-    const remainingIds = data.items
-      .filter(item => !customOrderIds.has(item.id))
-      .map(item => item.id);
-    
-    if (remainingIds.length > 0) {
-      data.customOrder.push(...remainingIds);
-    }
+
+  const invalidItems = orderedItems.filter(item => !item.id || typeof item.index !== 'number');
+  if (invalidItems.length > 0) {
+    return res.status(400).json({ success: false, message: 'Invalid item format: id and index required' });
   }
   
+  const notFoundIds = [];
+  orderedItems.forEach((orderedItem) => {
+    const item = data.items.find(item => item.id === orderedItem.id);
+    if (item) {
+      item.index = orderedItem.index;
+    } else {
+      notFoundIds.push(orderedItem.id);
+    }
+  });
+
+  if (notFoundIds.length > 0) {
+    return res.status(400).json({ success: false, message: `Items not found: ${notFoundIds.join(', ')}` });
+  }
+
   res.json({ 
     success: true, 
-    message: 'Order updated successfully',
-  });
-});
-
-app.get('/api/items/order', (req, res) => {
-  res.json({ 
-    customOrder: data.customOrder,
+    message: 'Order updated successfully'
   });
 });
 
 app.delete('/api/items/order', (req, res) => {
-  data.customOrder = null;
+  data.items.forEach(item => {
+    item.index = item.id - 1;
+  });
+  
   res.json({ success: true, message: 'Custom order reset' });
 });
 
 app.get('/api/stats', (req, res) => {
+const reorderedItems = data.items
+    .filter(item => item.index !== item.id - 1)
+    .map(item => ({ id: item.id, value: item.value, index: item.index }));
+
   res.json({
     totalItems: data.items.length,
     selectedItems: data.selectedItems.size,
-    hasCustomOrder: data.customOrder !== null,
-    customOrderLength: data.customOrder ? data.customOrder.length : 0
+    reorderedItems: reorderedItems,
+    reorderedCount: reorderedItems.length
   });
 });
 
