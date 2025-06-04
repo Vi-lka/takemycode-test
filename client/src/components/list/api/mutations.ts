@@ -60,7 +60,7 @@ export function useOrderMutation(searchQuery: string) {
 
   return useMutation({
     mutationFn: updateOrder,
-    onMutate: async ({ orderedIds }) => {
+    onMutate: async ({ orderedItems }) => {
       await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
 
       const previousData = queryClient.getQueryData(["listData", searchQuery])
@@ -68,31 +68,26 @@ export function useOrderMutation(searchQuery: string) {
       // Optimistically update the UI
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       queryClient.setQueryData(["listData", searchQuery], (oldData: any) => {
-        if (!oldData) return oldData;
+        if (!oldData) return oldData
 
-        // Create a map of orderedIds to their new indices
-        const orderMap = new Map(orderedIds.map((id, index) => [id, index]));
+        // Create a map of id to new index
+        const indexMap = new Map(orderedItems.map((item) => [item.id, item.index]))
 
-        // Update only the current page's items
-        const updatedPages = oldData.pages.map((page: FetchItemsResponse) => {
-          const items = [...page.items];
-          items.sort((a, b) => {
-            const aOrder = orderMap.has(a.id) ? orderMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
-            const bOrder = orderMap.has(b.id) ? orderMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
-            return aOrder - bOrder;
-          });
-
-          return {
-            ...page,
-            items,
-          };
-        });
+        const updatedPages = oldData.pages.map((page: FetchItemsResponse) => ({
+          ...page,
+          items: page.items
+            .map((item) => ({
+              ...item,
+              index: indexMap.get(item.id) ?? item.index,
+            }))
+            .sort((a, b) => a.index - b.index),
+        }))
 
         return {
           ...oldData,
           pages: updatedPages,
-        };
-      });
+        }
+      })
 
       // Return a context object with the snapshotted value
       return { previousData }
@@ -103,6 +98,7 @@ export function useOrderMutation(searchQuery: string) {
       }
       toast.error("Error updating order", {
         description: err instanceof Error ? err.message : "An unknown error occurred",
+        duration: Infinity
       })
     },
     onSuccess: () => {

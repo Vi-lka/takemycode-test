@@ -5,6 +5,7 @@ export const ItemSchema = z.object({
   id: z.number(),
   value: z.string(),
   selected: z.boolean(),
+  index: z.number()
 })
 
 // Queries
@@ -20,7 +21,10 @@ export const UpdateSelectionParamsSchema = z.object({
 })
 
 export const UpdateOrderParamsSchema = z.object({
-  orderedIds: z.array(z.number()),
+  orderedItems: z.array(z.object({
+    id: z.number(),
+    index: z.number(),
+  })),
 })
 
 // Responses
@@ -55,8 +59,12 @@ export const ResetOrderResponseSchema = z.object({
 export const StatsResponseSchema = z.object({
   totalItems: z.number().int().nonnegative(),
   selectedItems: z.number().int().nonnegative(),
-  hasCustomOrder: z.boolean(),
-  customOrderLength: z.number().int().nonnegative(),
+  reorderedItems: z.array(z.object({
+    id: z.number(),
+    value: z.string(),
+    index: z.number(),
+  })),
+  reorderedCount: z.number().int().nonnegative(),
 })
 
 export type Item = z.infer<typeof ItemSchema>

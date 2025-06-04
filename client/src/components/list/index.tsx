@@ -1,7 +1,7 @@
 import { fetchItems } from '@/lib/api'
 import { ITEMS_PER_PAGE } from '@/lib/const'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { GripVertical, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils'
 import { useSearch } from '@/lib/useSearch'
 import { ScrollArea } from '../ui/scroll-area'
 import { useOrderMutation, useSelectionMutation } from './api/mutations'
+import { arrayMove } from "@dnd-kit/sortable"
+import type { Item } from '@/lib/schema'
 
 export default function List({
   className
@@ -18,6 +20,7 @@ export default function List({
   className?: string
 }) {
   const [searchQuery] = useSearch()
+  const [localItems, setLocalItems] = useState<Item[]>([])
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery({
     queryKey: ["listData", searchQuery],
@@ -35,14 +38,19 @@ export default function List({
   const selectionMutation = useSelectionMutation(searchQuery)
   const orderMutation = useOrderMutation(searchQuery)
 
-  const allItems = useMemo(() => {
+  const serverItems = useMemo(() => {
     return data?.pages.flatMap((page) => page.items) ?? []
   }, [data])
+
+  // Sync local items with server items
+  useEffect(() => {
+    setLocalItems(serverItems)
+  }, [serverItems])
 
   const parentRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
-    count: hasNextPage ? allItems.length + 1 : allItems.length,
+    count: hasNextPage ? localItems.length + 1 : localItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 60,
     overscan: 5,
@@ -54,14 +62,14 @@ export default function List({
 
     if (!lastItem) return
 
-    if (lastItem.index >= allItems.length - 1 && hasNextPage && !isFetchingNextPage) {
+    if (lastItem.index >= localItems.length - 1 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasNextPage, fetchNextPage, allItems.length, isFetchingNextPage, virtualizer.getVirtualItems()])
+  }, [hasNextPage, fetchNextPage, localItems.length, isFetchingNextPage, virtualizer.getVirtualItems()])
 
   const handleSelect = (id: number, selected: boolean) => {
-    const currentlySelected = allItems.filter((item) => item.selected).map((item) => item.id)
+    const currentlySelected = localItems.filter((item) => item.selected).map((item) => item.id)
     const newSelection = selected
       ? [...currentlySelected, id]
       : currentlySelected.filter((selectedId) => selectedId !== id)
@@ -69,20 +77,55 @@ export default function List({
     selectionMutation.mutate({selectedIds: newSelection})
   }
 
-    // Drag and drop
   const handleMove = (event: { activeIndex: number; overIndex: number }) => {
     const { activeIndex, overIndex } = event
 
-    if (activeIndex !== overIndex) {
-      // Create reordered items array
-      const reorderedItems = [...allItems]
-      const [movedItem] = reorderedItems.splice(activeIndex, 1)
-      reorderedItems.splice(overIndex, 0, movedItem)
+    const newItems = arrayMove(localItems, activeIndex, overIndex)
+    setLocalItems(newItems)
 
-      // Send the new order to the server
-      const orderedIds = reorderedItems.map((item) => item.id)
-      orderMutation.mutate({ orderedIds })
+    const movedItem = serverItems[activeIndex];
+    const targetItem = serverItems[overIndex];
+    const movedItemNewIndex = targetItem.index;
+    
+    const isMovingUp = activeIndex > overIndex;
+    const startIdx = Math.min(activeIndex, overIndex);
+    const endIdx = Math.max(activeIndex, overIndex);
+    
+    const orderedItems: { id: number; index: number }[] = [];
+    const reorderedItems = [...serverItems];
+    
+    // Perform the move in the array for reference
+    const [moved] = reorderedItems.splice(activeIndex, 1);
+    reorderedItems.splice(overIndex, 0, moved);
+    
+    // Update indices for affected items based on their index field
+    for (let i = startIdx; i <= endIdx; i++) {
+      const item = reorderedItems[i];
+
+      let newIndex: number;
+    
+      if (item.id === movedItem.id) {
+        // moved item gets the target item's original index
+        newIndex = movedItemNewIndex;
+      } else if (isMovingUp) {
+        // shift down
+        newIndex = item.index + 1;
+      } else {
+        // shift up
+        newIndex = item.index - 1;
+      }
+    
+      orderedItems.push({
+        id: item.id,
+        index: newIndex,
+      });
     }
+
+    orderMutation.mutate({ orderedItems })
+  }
+
+  const handleValueChange = (newItems: Item[]) => {
+    setLocalItems(newItems)
   }
 
   if (isLoading) {
@@ -109,7 +152,13 @@ export default function List({
     <div className={cn("border rounded-md overflow-hidden", className)}>
       {/* Virtual scrolling container */}
       <ScrollArea ref={parentRef} className="h-[calc(100vh-200px)]">
-        <Sortable value={allItems} getItemValue={(item) => item.id} onMove={handleMove} orientation="vertical">
+        <Sortable 
+          value={localItems} 
+          getItemValue={(item) => item.id} 
+          onValueChange={handleValueChange}
+          onMove={handleMove} 
+          orientation="vertical"
+        >
           <SortableContent
             style={{
               height: `${virtualizer.getTotalSize()}px`,
@@ -118,12 +167,12 @@ export default function List({
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const item = allItems[virtualItem.index]
+              const item = localItems[virtualItem.index]
               if (!item) return null
 
               return (
                 <SortableItem
-                  key={virtualItem.index}
+                  key={item.id}
                   value={item.id}
                   style={{
                     position: "absolute",
@@ -152,10 +201,10 @@ export default function List({
 
           <SortableOverlay>
             {({ value }) => {
-              const draggedItem = allItems.find((item) => item.id === value)
+              const draggedItem = localItems.find((item) => item.id === value)
               return (
                 <ListItem 
-                  item={draggedItem ? draggedItem : {id: -1, value: "Dragging item...", selected: false}}
+                  item={draggedItem ? draggedItem : {id: -1, value: "Dragging item...", index: -1, selected: false}}
                   className="shadow-lg rounded opacity-90"
                 >
                   <div className="mr-2 p-1 h-auto">
