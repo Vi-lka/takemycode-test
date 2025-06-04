@@ -8,7 +8,7 @@ export const useSelectionMutation = (searchQuery: string) => {
 
   return useMutation({
     mutationFn: updateSelection,
-    onMutate: async ({ selectedIds }) => {
+    onMutate: async ({ selectedIds, unSelectedIds }) => {
       await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
 
       const previousData = queryClient.getQueryData(["listData", searchQuery])
@@ -19,15 +19,22 @@ export const useSelectionMutation = (searchQuery: string) => {
         if (!oldData) return oldData
 
         const selectedIdsSet = new Set(selectedIds)
+        const unSelectedIdsSet = new Set(unSelectedIds);
 
         return {
           ...oldData,
           pages: oldData.pages.map((page: FetchItemsResponse) => ({
             ...page,
-            items: page.items.map((item) => ({
-              ...item,
-              selected: selectedIdsSet.has(item.id),
-            })),
+            items: page.items.map((item) => {
+              const isSelected = selectedIdsSet.has(item.id);
+              const isUnselected = unSelectedIdsSet.has(item.id);
+              const selectionStatus = isSelected ? true : isUnselected ? false : item.selected;
+
+              return {
+                ...item,
+                selected: selectionStatus,
+              };
+            }),
           })),
         }
       })

@@ -53,6 +53,11 @@ export default function List({
     count: hasNextPage ? localItems.length + 1 : localItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 60,
+    measureElement:
+      typeof window !== 'undefined' &&
+      navigator.userAgent.indexOf('Firefox') === -1
+        ? element => element?.getBoundingClientRect().height
+        : undefined,
     overscan: 5,
   })
 
@@ -69,12 +74,13 @@ export default function List({
   }, [hasNextPage, fetchNextPage, localItems.length, isFetchingNextPage, virtualizer.getVirtualItems()])
 
   const handleSelect = (id: number, selected: boolean) => {
-    const currentlySelected = localItems.filter((item) => item.selected).map((item) => item.id)
-    const newSelection = selected
-      ? [...currentlySelected, id]
-      : currentlySelected.filter((selectedId) => selectedId !== id)
+    const newSelection = selected ? [id] : []
+    const newUnselection = selected ? [] : [id];
 
-    selectionMutation.mutate({selectedIds: newSelection})
+    console.log("newSelection: ", newSelection)
+    console.log("newUnselection: ", newUnselection)
+
+    selectionMutation.mutate({selectedIds: newSelection, unSelectedIds: newUnselection})
   }
 
   const handleMove = (event: { activeIndex: number; overIndex: number }) => {
@@ -173,22 +179,21 @@ export default function List({
               return (
                 <SortableItem
                   key={item.id}
+                  data-index={virtualItem.index} //needed for dynamic row height measurement
+                  ref={node => virtualizer.measureElement(node)} //measure dynamic row height
                   value={item.id}
                   style={{
                     position: "absolute",
                     top: virtualItem.start,
                     left: 0,
                     width: "100%",
-                    height: `${virtualItem.size}px`,
+                    // height: `${virtualItem.size}px`,
                   }}
                 >
                   <ListItem 
                     item={item}
                     onSelect={handleSelect}
-                    className={cn(
-                      item.selected ? "bg-muted" : "",
-                      'data-dragging:shadow-lg data-dragging:border-primary data-dragging:z-50'
-                    )}
+                    className={cn(item.selected ? "bg-muted" : "")}
                   >
                     <SortableItemHandle className="mr-2 p-1 h-auto">
                       <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -205,7 +210,7 @@ export default function List({
               return (
                 <ListItem 
                   item={draggedItem ? draggedItem : {id: -1, value: "Dragging item...", index: -1, selected: false}}
-                  className="shadow-lg rounded opacity-90"
+                  className={cn(draggedItem?.selected ? "bg-muted" : "", "shadow-lg rounded opacity-90")}
                 >
                   <div className="mr-2 p-1 h-auto">
                     <GripVertical className="h-5 w-5 text-muted-foreground" />

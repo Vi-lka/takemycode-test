@@ -15,6 +15,8 @@ async function apiRequest<TResponse, TParams = void>(
       params = paramsSchema.parse(params)
     }
 
+    // await new Promise((resolve) => setTimeout(resolve, 1000))
+
     const response = await fetch(url, {
       ...options,
       headers: {

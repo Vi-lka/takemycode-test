@@ -18,7 +18,7 @@ const ListItem = memo(function ListItem({
 }: ListItemProps) {
   return (
     <div className={cn(
-      'flex items-center p-3 border-b bg-background',
+      'flex items-center border-b px-3 bg-background',
       className
     )}>
       {children}
@@ -26,11 +26,11 @@ const ListItem = memo(function ListItem({
       <Checkbox
         checked={item.selected}
         onCheckedChange={(checked) => onSelect?.(item.id, checked === true)}
-        className="mr-4"
+        className="mr-4 cursor-pointer"
         id={`checkbox-${item.id}`}
       />
 
-      <label htmlFor={`checkbox-${item.id}`} className="flex-1 cursor-pointer">
+      <label htmlFor={`checkbox-${item.id}`} className="flex-1 p-3 cursor-pointer">
         {item.value}
       </label>
     </div>

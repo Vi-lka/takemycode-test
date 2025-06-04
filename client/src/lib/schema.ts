@@ -18,6 +18,7 @@ export const FetchItemsParamsSchema = z.object({
 
 export const UpdateSelectionParamsSchema = z.object({
   selectedIds: z.array(z.number()),
+  unSelectedIds: z.array(z.number()),
 })
 
 export const UpdateOrderParamsSchema = z.object({
