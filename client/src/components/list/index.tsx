@@ -10,6 +10,7 @@ import ListItem from './item'
 import { cn } from '@/lib/utils'
 import { useSearch } from '@/lib/useSearch'
 import { ScrollArea } from '../ui/scroll-area'
+import { useOrderMutation, useSelectionMutation } from './api/mutations'
 
 export default function List({
   className
@@ -30,6 +31,9 @@ export default function List({
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.currentPage + 1 : undefined),
     initialPageParam: 1,
   })
+
+  const selectionMutation = useSelectionMutation(searchQuery)
+  const orderMutation = useOrderMutation(searchQuery)
 
   const allItems = useMemo(() => {
     return data?.pages.flatMap((page) => page.items) ?? []
@@ -56,6 +60,31 @@ export default function List({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasNextPage, fetchNextPage, allItems.length, isFetchingNextPage, virtualizer.getVirtualItems()])
 
+  const handleSelect = (id: number, selected: boolean) => {
+    const currentlySelected = allItems.filter((item) => item.selected).map((item) => item.id)
+    const newSelection = selected
+      ? [...currentlySelected, id]
+      : currentlySelected.filter((selectedId) => selectedId !== id)
+
+    selectionMutation.mutate({selectedIds: newSelection})
+  }
+
+    // Drag and drop
+  const handleMove = (event: { activeIndex: number; overIndex: number }) => {
+    const { activeIndex, overIndex } = event
+
+    if (activeIndex !== overIndex) {
+      // Create reordered items array
+      const reorderedItems = [...allItems]
+      const [movedItem] = reorderedItems.splice(activeIndex, 1)
+      reorderedItems.splice(overIndex, 0, movedItem)
+
+      // Send the new order to the server
+      const orderedIds = reorderedItems.map((item) => item.id)
+      orderMutation.mutate({ orderedIds })
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -80,7 +109,7 @@ export default function List({
     <div className={cn("border rounded-md overflow-hidden", className)}>
       {/* Virtual scrolling container */}
       <ScrollArea ref={parentRef} className="h-[calc(100vh-200px)]">
-        <Sortable value={allItems} getItemValue={(item) => item.id} orientation="vertical">
+        <Sortable value={allItems} getItemValue={(item) => item.id} onMove={handleMove} orientation="vertical">
           <SortableContent
             style={{
               height: `${virtualizer.getTotalSize()}px`,
@@ -106,6 +135,7 @@ export default function List({
                 >
                   <ListItem 
                     item={item}
+                    onSelect={handleSelect}
                     className={cn(
                       item.selected ? "bg-muted" : "",
                       'data-dragging:shadow-lg data-dragging:border-primary data-dragging:z-50'

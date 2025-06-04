@@ -1,16 +1,18 @@
 import type { Item } from '@/lib/schema'
 import { cn } from '@/lib/utils'
 import { memo } from 'react'
+import { Checkbox } from '../ui/checkbox'
 
 interface ListItemProps {
   item: Item
-//   onSelect: (id: number, selected: boolean) => void
+  onSelect?: (id: number, selected: boolean) => void
   className?: string,
   children?: React.ReactNode
 }
 
 const ListItem = memo(function ListItem({ 
   item, 
+  onSelect,
   className,
   children
 }: ListItemProps) {
@@ -21,12 +23,12 @@ const ListItem = memo(function ListItem({
     )}>
       {children}
 
-      {/* <Checkbox
+      <Checkbox
         checked={item.selected}
-        onCheckedChange={(checked) => onSelect(item.id, checked === true)}
+        onCheckedChange={(checked) => onSelect?.(item.id, checked === true)}
         className="mr-4"
         id={`checkbox-${item.id}`}
-      /> */}
+      />
 
       <label htmlFor={`checkbox-${item.id}`} className="flex-1 cursor-pointer">
         {item.value}

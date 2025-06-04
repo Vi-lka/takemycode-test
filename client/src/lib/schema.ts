@@ -21,7 +21,6 @@ export const UpdateSelectionParamsSchema = z.object({
 
 export const UpdateOrderParamsSchema = z.object({
   orderedIds: z.array(z.number()),
-  isPartialUpdate: z.boolean().default(false),
 })
 
 // Responses
@@ -48,10 +47,6 @@ export const UpdateOrderResponseSchema = z.object({
   message: z.string(),
 })
 
-export const FetchOrderResponseSchema = z.object({
-  customOrder: z.array(z.number()).nullable(),
-})
-
 export const ResetOrderResponseSchema = z.object({
   success: z.boolean(),
   message: z.string(),
@@ -72,6 +67,5 @@ export type UpdateSelectionResponse = z.infer<typeof UpdateSelectionResponseSche
 export type FetchSelectedItemsResponse = z.infer<typeof FetchSelectedItemsResponseSchema>
 export type UpdateOrderParams = z.infer<typeof UpdateOrderParamsSchema>
 export type UpdateOrderResponse = z.infer<typeof UpdateOrderResponseSchema>
-export type FetchOrderResponse = z.infer<typeof FetchOrderResponseSchema>
 export type ResetOrderResponse = z.infer<typeof ResetOrderResponseSchema>
 export type StatsResponse = z.infer<typeof StatsResponseSchema>

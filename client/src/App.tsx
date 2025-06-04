@@ -5,6 +5,7 @@ import ListControls from './components/list/controls'
 import QueryProvider from './components/providers/query-provider'
 import { ThemeProvider } from './components/providers/theme-provider'
 import { NuqsAdapter } from 'nuqs/adapters/react'
+import { Toaster } from './components/ui/sonner'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <ListControls className='mt-6' />
             <List className='mt-6' />
           </main>
+          <Toaster />
         </ThemeProvider>
       </QueryProvider>
     </NuqsAdapter>

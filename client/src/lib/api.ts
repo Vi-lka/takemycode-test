@@ -1,5 +1,5 @@
 import type z from "zod";
-import { FetchItemsParamsSchema, FetchItemsResponseSchema, FetchOrderResponseSchema, FetchSelectedItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
+import { FetchItemsParamsSchema, FetchItemsResponseSchema, FetchSelectedItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
 
 const API_BASE = import.meta.env.API_BASE || 'http://localhost:3001';
 
@@ -61,10 +61,6 @@ export async function fetchItems(params: FetchItemsParams) {
 
 export async function fetchStats() {
   return apiRequest(`${API_BASE}/api/stats`, { method: "GET" }, StatsResponseSchema)
-}
-
-export async function fetchOrder() {
-  return apiRequest(`${API_BASE}/api/items/order`, { method: "GET" }, FetchOrderResponseSchema)
 }
 
 export async function fetchSelectedItems() {
