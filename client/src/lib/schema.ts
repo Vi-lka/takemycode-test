@@ -59,7 +59,7 @@ export const ResetOrderResponseSchema = z.object({
 
 export const StatsResponseSchema = z.object({
   totalItems: z.number().int().nonnegative(),
-  selectedItems: z.number().int().nonnegative(),
+  selectedItems: z.array(z.number().int().nonnegative()),
   reorderedItems: z.array(z.object({
     id: z.number(),
     value: z.string(),

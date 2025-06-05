@@ -1,4 +1,5 @@
 import { resetOrder, updateOrder, updateSelection } from "@/lib/api"
+import { ITEMS_PER_PAGE } from "@/lib/const"
 import type { FetchItemsResponse } from "@/lib/schema"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -80,16 +81,25 @@ export function useOrderMutation(searchQuery: string) {
         // Create a map of id to new index
         const indexMap = new Map(orderedItems.map((item) => [item.id, item.index]))
 
-        const updatedPages = oldData.pages.map((page: FetchItemsResponse) => ({
-          ...page,
-          items: page.items
-            .map((item) => ({
-              ...item,
-              index: indexMap.get(item.id) ?? item.index,
-            }))
-            .sort((a, b) => a.index - b.index),
-        }))
+        const allItems: FetchItemsResponse["items"] = oldData.pages.flatMap((page: FetchItemsResponse) => 
+          page.items.map((item) => ({
+            ...item,
+            index: indexMap.get(item.id) ?? item.index,
+          }))
+        )
+        allItems.sort((a, b) => a.index - b.index)
 
+        const updatedPages = oldData.pages.map((page: FetchItemsResponse, pageIndex: number) => {
+          const startIndex = pageIndex * ITEMS_PER_PAGE
+          const endIndex = startIndex + ITEMS_PER_PAGE
+          const pageItems = allItems.slice(startIndex, endIndex)
+              
+          return {
+            ...page,
+            items: pageItems,
+          }
+        })
+      
         return {
           ...oldData,
           pages: updatedPages,

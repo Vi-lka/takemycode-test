@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useSearch } from '@/lib/useSearch'
 import { useResetOrderMutation } from './api/mutations'
 import { Button } from '../ui/button'
-import { useItemsStore } from './api/items-store'
+import { useItemsStore } from './api/store'
 
 interface ListControlsProps {
   className?: string

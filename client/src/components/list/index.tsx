@@ -1,165 +1,71 @@
-import { fetchItems } from '@/lib/api'
-import { ITEMS_PER_PAGE } from '@/lib/const'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef } from 'react'
-import { useVirtualizer } from "@tanstack/react-virtual"
+import { memo, useMemo } from 'react'
 import { GripVertical, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
-import { Sortable, SortableContent, SortableItem, SortableItemHandle, SortableOverlay } from '../ui/sortable'
+import { Sortable, SortableContent, SortableOverlay } from '../ui/sortable'
 import ListItem from './item'
 import { cn } from '@/lib/utils'
-import { useSearch } from '@/lib/useSearch'
 import { ScrollArea } from '../ui/scroll-area'
-import { useOrderMutation, useSelectionMutation } from './api/mutations'
-import { arrayMove } from "@dnd-kit/sortable"
+import ListRow from './row'
 import type { Item } from '@/lib/schema'
-import { useItemsStore } from './api/items-store'
+import useList from './api/use-list'
 
 export default function List({
   className
 }: {
   className?: string
 }) {
-  const [searchQuery] = useSearch()
-  const { localItems, setLocalItems } = useItemsStore()
+ const {
+    localItems,
+    isLoading,
+    error,
+    isFetchingNextPage,
+    parentRef,
+    virtualizer,
+    virtualItems,
+    handleSelect,
+    handleMove,
+    refetch,
+  } = useList()
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery({
-    queryKey: ["listData", searchQuery],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchItems({
-        page: pageParam,
-        search: searchQuery,
-        limit: ITEMS_PER_PAGE,
-        useCustomOrder: true,
-      }),
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.currentPage + 1 : undefined),
-    initialPageParam: 1,
-  })
+  const virtualContent = useMemo(() => {
+    return virtualItems.map((virtualItem) => {
+      const item = localItems[virtualItem.index]
+      if (!item) return null
 
-  const selectionMutation = useSelectionMutation(searchQuery)
-  const orderMutation = useOrderMutation(searchQuery)
-
-  const serverItems = useMemo(() => {
-    return data?.pages.flatMap((page) => page.items) ?? []
-  }, [data])
-
-  // Sync local items with server items
-  useEffect(() => {
-    setLocalItems(serverItems)
-  }, [serverItems, setLocalItems])
-
-  const parentRef = useRef<HTMLDivElement>(null)
-
-  const virtualizer = useVirtualizer({
-    count: hasNextPage ? localItems.length + 1 : localItems.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
-    measureElement:
-      typeof window !== 'undefined' &&
-      navigator.userAgent.indexOf('Firefox') === -1
-        ? element => element?.getBoundingClientRect().height
-        : undefined,
-    overscan: 5,
-  })
-
-  // Handle infinite scrolling
-  useEffect(() => {
-    const [lastItem] = [...virtualizer.getVirtualItems()].reverse()
-
-    if (!lastItem) return
-
-    if (lastItem.index >= localItems.length - 1 && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasNextPage, fetchNextPage, localItems.length, isFetchingNextPage, virtualizer.getVirtualItems()])
-
-  const handleSelect = (id: number, selected: boolean) => {
-    const newSelection = selected ? [id] : []
-    const newUnselection = selected ? [] : [id];
-
-    selectionMutation.mutate({selectedIds: newSelection, unSelectedIds: newUnselection})
-  }
-
-  const handleMove = (event: { activeIndex: number; overIndex: number }) => {
-    const { activeIndex, overIndex } = event
-
-    const newItems = arrayMove(localItems, activeIndex, overIndex)
-    setLocalItems(newItems)
-
-    const movedItem = serverItems[activeIndex];
-    const targetItem = serverItems[overIndex];
-    const movedItemNewIndex = targetItem.index;
-    
-    const isMovingUp = activeIndex > overIndex;
-    const startIdx = Math.min(activeIndex, overIndex);
-    const endIdx = Math.max(activeIndex, overIndex);
-    
-    const orderedItems: { id: number; index: number }[] = [];
-    const reorderedItems = [...serverItems];
-    
-    // Perform the move in the array for reference
-    const [moved] = reorderedItems.splice(activeIndex, 1);
-    reorderedItems.splice(overIndex, 0, moved);
-    
-    // Update indices for affected items based on their index field
-    for (let i = startIdx; i <= endIdx; i++) {
-      const item = reorderedItems[i];
-
-      let newIndex: number;
-    
-      if (item.id === movedItem.id) {
-        // moved item gets the target item's original index
-        newIndex = movedItemNewIndex;
-      } else if (isMovingUp) {
-        // shift down
-        newIndex = item.index + 1;
-      } else {
-        // shift up
-        newIndex = item.index - 1;
+      const itemStyle = {
+        position: "absolute" as const,
+        top: virtualItem.start,
+        left: 0,
+        width: "100%",
       }
-    
-      orderedItems.push({
-        id: item.id,
-        index: newIndex,
-      });
-    }
 
-    orderMutation.mutate({ orderedItems })
-  }
-
-  const handleValueChange = (newItems: Item[]) => {
-    setLocalItems(newItems)
-  }
+      return (
+        <ListRow
+          key={item.id}
+          item={item}
+          virtualItem={virtualItem}
+          onSelect={handleSelect}
+          style={itemStyle}
+        />
+      )
+    })
+  }, [virtualItems, localItems, handleSelect])
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading data...</span>
-      </div>
-    )
+    return <LoadingState className={className} />
   }
 
   if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center text-red-500 p-4">
-        <p>Error loading data. Please try again.</p>
-        <Button onClick={() => refetch()} className="mt-2">
-          Retry
-        </Button>
-      </div>
-    )
+    return <ErrorState className={className} onRetry={refetch} />
   }
 
   return (
     <div className={cn("border rounded-md overflow-hidden", className)}>
       {/* Virtual scrolling container */}
-      <ScrollArea ref={parentRef} className="h-[calc(100vh-200px)]">
+      <ScrollArea ref={parentRef} className="h-[calc(100vh-260px)]">
         <Sortable 
           value={localItems} 
           getItemValue={(item) => item.id} 
-          onValueChange={handleValueChange}
           onMove={handleMove} 
           orientation="vertical"
         >
@@ -168,65 +74,58 @@ export default function List({
               height: `${virtualizer.getTotalSize()}px`,
               width: "100%",
               position: "relative",
+              willChange: "transform",
             }}
           >
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const item = localItems[virtualItem.index]
-              if (!item) return null
-
-              return (
-                <SortableItem
-                  key={item.id}
-                  data-index={virtualItem.index} //needed for dynamic row height measurement
-                  ref={node => virtualizer.measureElement(node)} //measure dynamic row height
-                  value={item.id}
-                  style={{
-                    position: "absolute",
-                    top: virtualItem.start,
-                    left: 0,
-                    width: "100%",
-                    // height: `${virtualItem.size}px`,
-                  }}
-                >
-                  <ListItem 
-                    item={item}
-                    onSelect={handleSelect}
-                    className={cn(item.selected ? "bg-muted" : "")}
-                  >
-                    <SortableItemHandle className="mr-2 p-1 h-auto">
-                      <GripVertical className="h-5 w-5 text-muted-foreground" />
-                    </SortableItemHandle>
-                  </ListItem>
-                </SortableItem>
-              )
-            })}
+            {virtualContent}
           </SortableContent>
 
           <SortableOverlay>
             {({ value }) => {
-              const draggedItem = localItems.find((item) => item.id === value)
-              return (
-                <ListItem 
-                  item={draggedItem ? draggedItem : {id: -1, value: "Dragging item...", index: -1, selected: false}}
-                  className={cn(draggedItem?.selected ? "bg-muted" : "", "shadow-lg rounded opacity-90")}
-                >
-                  <div className="mr-2 p-1 h-auto">
-                    <GripVertical className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </ListItem>
-              )
+              const draggedItem = localItems.find((item) => item.id === value) || {
+                id: -1,
+                value: "Dragging item...",
+                index: -1,
+                selected: false,
+              }
+              return <DragOverlayItem item={draggedItem} />
             }}
           </SortableOverlay>
         </Sortable>
 
-        {/* Loading indicator */}
-        {isFetchingNextPage && (
-          <div className="flex items-center justify-center p-4">
-            <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span>Loading more items...</span>
-          </div>
-        )}
+        {isFetchingNextPage && <LoadingMoreIndicator />}
       </ScrollArea>
     </div>
   )
 }
+
+const DragOverlayItem = memo(({ item }: { item: Item }) => (
+  <ListItem item={item} className={cn(item.selected ? "bg-muted" : "", "shadow-lg rounded opacity-90")}>
+    <div className="mr-2 p-1 h-auto">
+      <GripVertical className="h-5 w-5 text-muted-foreground" />
+    </div>
+  </ListItem>
+))
+
+const LoadingState = memo(({ className }: { className?: string }) => (
+  <div className={cn("flex items-center justify-center h-[calc(100vh-260px)]", className)}>
+    <Loader2 className="h-8 w-8 animate-spin" />
+    <span className="ml-2">Loading data...</span>
+  </div>
+))
+
+const ErrorState = memo(({ className, onRetry }: { className?: string; onRetry: () => void }) => (
+  <div className={cn("flex flex-col items-center justify-center h-[calc(100vh-260px)] text-center text-destructive p-4", className)}>
+    <p>Error loading data. Please try again.</p>
+    <Button onClick={onRetry} className="mt-2 cursor-pointer">
+      Retry
+    </Button>
+  </div>
+))
+
+const LoadingMoreIndicator = memo(() => (
+  <div className="flex items-center justify-center p-2">
+    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+    <span>Loading more items...</span>
+  </div>
+))

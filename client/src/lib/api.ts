@@ -15,8 +15,6 @@ async function apiRequest<TResponse, TParams = void>(
       params = paramsSchema.parse(params)
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -68,7 +66,6 @@ export async function fetchStats() {
 export async function fetchSelectedItems() {
   return apiRequest(`${API_BASE}/api/items/selected`, { method: "GET" }, FetchSelectedItemsResponseSchema)
 }
-
 
 export async function updateSelection(params: UpdateSelectionParams) {
   return apiRequest(

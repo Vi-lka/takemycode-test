@@ -7,7 +7,6 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-
 let data = {
   items: Array.from({ length: 1000000 }, (_, i) => ({
     id: i + 1,
@@ -125,7 +124,7 @@ const reorderedItems = data.items
 
   res.json({
     totalItems: data.items.length,
-    selectedItems: data.selectedItems,
+    selectedItems: Array.from(data.selectedItems),
     reorderedItems: reorderedItems,
     reorderedCount: reorderedItems.length
   });

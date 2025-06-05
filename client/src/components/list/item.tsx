@@ -10,12 +10,12 @@ interface ListItemProps {
   children?: React.ReactNode
 }
 
-const ListItem = memo(function ListItem({ 
+const ListItem = memo(({ 
   item, 
   onSelect,
   className,
   children
-}: ListItemProps) {
+}: ListItemProps) => {
   return (
     <div className={cn(
       'flex items-center border-b px-3 bg-background',
@@ -35,6 +35,6 @@ const ListItem = memo(function ListItem({
       </label>
     </div>
   )
-});
+})
 
 export default ListItem;
