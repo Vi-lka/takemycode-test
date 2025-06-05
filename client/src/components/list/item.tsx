@@ -2,6 +2,7 @@ import type { Item } from '@/lib/schema'
 import { cn } from '@/lib/utils'
 import { memo } from 'react'
 import { Checkbox } from '../ui/checkbox'
+import { Label } from '../ui/label'
 
 interface ListItemProps {
   item: Item
@@ -30,9 +31,9 @@ const ListItem = memo(({
         id={`checkbox-${item.id}`}
       />
 
-      <label htmlFor={`checkbox-${item.id}`} className="flex-1 p-3 cursor-pointer">
+      <Label htmlFor={`checkbox-${item.id}`} className="text-base flex-1 p-3 cursor-pointer">
         {item.value}
-      </label>
+      </Label>
     </div>
   )
 })
