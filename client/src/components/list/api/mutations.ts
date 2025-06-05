@@ -118,9 +118,7 @@ export function useOrderMutation(searchQuery: string) {
       })
     },
     onSuccess: () => {
-      toast.success("Order updated", {
-        description: "Items have been reordered successfully",
-      })
+      toast.success("Order updated")
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["listData", searchQuery] })
@@ -172,9 +170,7 @@ export function useResetOrderMutation() {
       })
     },
     onSuccess: () => {
-      toast.success("Order reset", {
-        description: "Items have been reordered successfully",
-      })
+      toast.success("Order reset")
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["listData"] })
