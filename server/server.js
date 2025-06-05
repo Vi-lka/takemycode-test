@@ -86,7 +86,7 @@ app.get('/api/items', (req, res) => {
 app.post('/api/items/selection', (req, res) => {
   const { selectedIds, unSelectedIds } = req.body;
 
-  unSelectedIds.forEach(id =>data.selectedItems.delete(id));
+  unSelectedIds.forEach(id => data.selectedItems.delete(id));
   selectedIds.forEach(id => data.selectedItems.add(id));
   
   res.json({ success: true, selectedCount: data.selectedItems.size });

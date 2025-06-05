@@ -11,7 +11,7 @@ export const useSelectionMutation = (searchQuery: string) => {
     mutationKey: ['selection'],
     mutationFn: updateSelection,
     onMutate: async ({ selectedIds, unSelectedIds }) => {
-      // await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
+      await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
 
       const previousData = queryClient.getQueryData(["listData", searchQuery])
 
