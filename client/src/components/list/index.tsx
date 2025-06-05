@@ -19,6 +19,7 @@ export default function List({
     isLoading,
     error,
     isFetchingNextPage,
+    isSearching,
     parentRef,
     virtualizer,
     virtualItems,
@@ -47,11 +48,12 @@ export default function List({
           // virtualizer={virtualizer}
           // virtualItem={virtualItem}
           onSelect={handleSelect}
+          disabled={isSearching}
           style={itemStyle}
         />
       )
     })
-  }, [virtualItems, localItems, handleSelect])
+  }, [virtualItems, localItems, isSearching, handleSelect])
 
   const dragOverlay = useCallback(({ value }: { value: string | number }) => {
     const draggedItem = localItems.find((item) => item.id === value) || {
@@ -104,7 +106,7 @@ export default function List({
 }
 
 const DragOverlayItem = memo(({ item }: { item: Item }) => (
-  <ListItem item={item} className={cn(item.selected ? "bg-muted" : "", "shadow-lg rounded opacity-90")}>
+  <ListItem item={item} disabled className={cn(item.selected ? "bg-muted" : "", "shadow-lg rounded opacity-90")}>
     <div className="mr-2 p-1 h-auto">
       <GripVertical className="h-5 w-5 text-muted-foreground" />
     </div>

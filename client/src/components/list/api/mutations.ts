@@ -1,13 +1,14 @@
 import { resetOrder, updateOrder, updateSelection } from "@/lib/api"
 import { ITEMS_PER_PAGE } from "@/lib/const"
 import type { FetchItemsResponse } from "@/lib/schema"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 export const useSelectionMutation = (searchQuery: string) => {
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: ['selection'],
     mutationFn: updateSelection,
     onMutate: async ({ selectedIds, unSelectedIds }) => {
       await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
@@ -15,8 +16,7 @@ export const useSelectionMutation = (searchQuery: string) => {
       const previousData = queryClient.getQueryData(["listData", searchQuery])
 
       // Optimistically update the UI
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryClient.setQueryData(["listData", searchQuery], (oldData: any) => {
+      queryClient.setQueryData<InfiniteData<FetchItemsResponse>>(["listData", searchQuery], (oldData) => {
         if (!oldData) return oldData
 
         const selectedIdsSet = new Set(selectedIds)
@@ -24,7 +24,7 @@ export const useSelectionMutation = (searchQuery: string) => {
 
         return {
           ...oldData,
-          pages: oldData.pages.map((page: FetchItemsResponse) => ({
+          pages: oldData.pages.map((page) => ({
             ...page,
             items: page.items.map((item) => {
               const isSelected = selectedIdsSet.has(item.id);
@@ -40,6 +40,11 @@ export const useSelectionMutation = (searchQuery: string) => {
         }
       })
 
+      toast.loading("Updating...", { 
+        id: `selection-loading`,
+        duration: Infinity 
+      })
+
       // Return a context object with the snapshotted value
       return { previousData }
     },
@@ -52,13 +57,19 @@ export const useSelectionMutation = (searchQuery: string) => {
       })
     },
     onSuccess: (data) => {
-      toast.success("Selection updated", {
-        description: `${data.selectedCount} items selected`,
-      })
+      if (queryClient.isMutating({ mutationKey: ['selection'] }) === 1) {
+        toast.success("Selection updated", {
+          description: `${data.selectedCount} items selected`,
+        })
+      }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["listData"] })
-      queryClient.invalidateQueries({ queryKey: ["stats"] })
+      // Preventing over-invalidation if concurrent optimistic updates (https://tkdodo.eu/blog/concurrent-optimistic-updates-in-react-query)
+      if (queryClient.isMutating({ mutationKey: ['selection'] }) === 1) {
+        toast.dismiss(`selection-loading`)
+        queryClient.invalidateQueries({ queryKey: ["listData", searchQuery] })
+        queryClient.invalidateQueries({ queryKey: ["stats"] })
+      }
     },
   })
 }
@@ -67,6 +78,7 @@ export function useOrderMutation(searchQuery: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: ['order'],
     mutationFn: updateOrder,
     onMutate: async ({ orderedItems }) => {
       await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
@@ -74,14 +86,13 @@ export function useOrderMutation(searchQuery: string) {
       const previousData = queryClient.getQueryData(["listData", searchQuery])
 
       // Optimistically update the UI
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryClient.setQueryData(["listData", searchQuery], (oldData: any) => {
+      queryClient.setQueryData<InfiniteData<FetchItemsResponse>>(["listData", searchQuery], (oldData) => {
         if (!oldData) return oldData
 
         // Create a map of id to new index
         const indexMap = new Map(orderedItems.map((item) => [item.id, item.index]))
 
-        const allItems: FetchItemsResponse["items"] = oldData.pages.flatMap((page: FetchItemsResponse) => 
+        const allItems = oldData.pages.flatMap((page) => 
           page.items.map((item) => ({
             ...item,
             index: indexMap.get(item.id) ?? item.index,
@@ -89,7 +100,7 @@ export function useOrderMutation(searchQuery: string) {
         )
         allItems.sort((a, b) => a.index - b.index)
 
-        const updatedPages = oldData.pages.map((page: FetchItemsResponse, pageIndex: number) => {
+        const updatedPages = oldData.pages.map((page, pageIndex) => {
           const startIndex = pageIndex * ITEMS_PER_PAGE
           const endIndex = startIndex + ITEMS_PER_PAGE
           const pageItems = allItems.slice(startIndex, endIndex)
@@ -106,6 +117,11 @@ export function useOrderMutation(searchQuery: string) {
         }
       })
 
+      toast.loading("Updating...", { 
+        id: `order-loading`,
+        duration: Infinity 
+      })
+
       // Return a context object with the snapshotted value
       return { previousData }
     },
@@ -118,11 +134,17 @@ export function useOrderMutation(searchQuery: string) {
       })
     },
     onSuccess: () => {
-      toast.success("Order updated")
+      if (queryClient.isMutating({ mutationKey: ['order'] }) === 1) {
+        toast.success("Order updated")
+      }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["listData", searchQuery] })
-      queryClient.invalidateQueries({ queryKey: ["stats", searchQuery] })
+      // Preventing over-invalidation if concurrent optimistic updates (https://tkdodo.eu/blog/concurrent-optimistic-updates-in-react-query)
+      if (queryClient.isMutating({ mutationKey: ['order'] }) === 1) {
+        toast.dismiss(`order-loading`)
+        queryClient.invalidateQueries({ queryKey: ["listData", searchQuery] })
+        queryClient.invalidateQueries({ queryKey: ["stats"] })
+      }
     },
   })
 }
@@ -138,11 +160,10 @@ export function useResetOrderMutation() {
       const previousData = queryClient.getQueryData(["listData"])
 
       // Optimistically update the UI
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryClient.setQueryData(["listData"], (oldData: any) => {
+      queryClient.setQueryData<InfiniteData<FetchItemsResponse>>(["listData"], (oldData) => {
         if (!oldData) return oldData
 
-        const updatedPages = oldData.pages.map((page: FetchItemsResponse) => ({
+        const updatedPages = oldData.pages.map((page) => ({
           ...page,
           items: page.items
             .map((item) => ({

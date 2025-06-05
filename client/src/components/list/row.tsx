@@ -10,6 +10,7 @@ interface ListRowProps {
   // virtualizer: Virtualizer<HTMLDivElement, Element>
   // virtualItem: VirtualItem
   onSelect: (id: number, selected: boolean) => void
+  disabled?: boolean
   style?: React.CSSProperties
 }
 
@@ -18,6 +19,7 @@ const ListRow = memo(({
   // virtualizer,
   // virtualItem, 
   onSelect, 
+  disabled,
   style 
 }: ListRowProps) => {
   return (
@@ -26,14 +28,16 @@ const ListRow = memo(({
       // data-index={virtualItem.index}
       // ref={node => virtualizer.measureElement(node)} 
       value={item.id}
+      disabled={disabled}
       style={style}
     >
       <ListItem 
         item={item}
+        disabled={disabled}
         onSelect={onSelect}
         className={cn(item.selected ? "bg-muted" : "")}
       >
-        <SortableItemHandle className="mr-2 p-1 h-auto">
+        <SortableItemHandle disabled={disabled} className="mr-2 p-1 h-auto">
           <GripVertical className="h-5 w-5 text-muted-foreground" />
         </SortableItemHandle>
       </ListItem>

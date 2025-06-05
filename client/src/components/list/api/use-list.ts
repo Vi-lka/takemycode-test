@@ -12,9 +12,10 @@ export default function useList() {
   const [searchQuery] = useSearch()
   const { localItems, setLocalItems } = useItemsStore()
   const parentRef = useRef<HTMLDivElement>(null)
+  const prevSearchQuery = useRef(searchQuery)
 
   // Data fetching
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error, refetch } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isFetching, error, refetch } = useInfiniteQuery({
     queryKey: ["listData", searchQuery],
     queryFn: ({ pageParam = 1 }) =>
       fetchItems({
@@ -27,6 +28,14 @@ export default function useList() {
     initialPageParam: 1,
   })
 
+  // If the fetch is due to a new searchQuery
+  const isSearching = useMemo(() => {
+    const queryChanged = prevSearchQuery.current !== searchQuery
+    prevSearchQuery.current = searchQuery
+
+    return isFetching && queryChanged && !isFetchingNextPage
+  }, [isFetching, searchQuery, isFetchingNextPage])
+
   // Mutations
   const selectionMutation = useSelectionMutation(searchQuery)
   const orderMutation = useOrderMutation(searchQuery)
@@ -37,8 +46,8 @@ export default function useList() {
 
   // Sync local items with server items
   useEffect(() => {
-    setLocalItems(serverItems)
-  }, [serverItems, setLocalItems])
+    if (!isSearching) setLocalItems(serverItems)
+  }, [isSearching, serverItems, setLocalItems])
 
   // Virtualization
   const virtualizer = useVirtualizer({
@@ -133,6 +142,7 @@ export default function useList() {
     isLoading,
     error,
     isFetchingNextPage,
+    isSearching,
     
     // Refs
     parentRef,

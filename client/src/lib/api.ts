@@ -16,8 +16,6 @@ async function apiRequest<TResponse, TParams = void>(
       params = paramsSchema.parse(params)
     }
 
-    console.log(API_BASE)
-
     const response = await fetch(url, {
       ...options,
       headers: {
