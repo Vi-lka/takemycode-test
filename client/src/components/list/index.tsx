@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { GripVertical, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Sortable, SortableContent, SortableOverlay } from '../ui/sortable'
@@ -37,19 +37,31 @@ export default function List({
         top: virtualItem.start,
         left: 0,
         width: "100%",
+        willChange: "transform",
       }
 
       return (
         <ListRow
           key={item.id}
           item={item}
-          virtualItem={virtualItem}
+          // virtualizer={virtualizer}
+          // virtualItem={virtualItem}
           onSelect={handleSelect}
           style={itemStyle}
         />
       )
     })
   }, [virtualItems, localItems, handleSelect])
+
+  const dragOverlay = useCallback(({ value }: { value: string | number }) => {
+    const draggedItem = localItems.find((item) => item.id === value) || {
+      id: -1,
+      value: "Dragging item...",
+      index: -1,
+      selected: false,
+    }
+    return <DragOverlayItem item={draggedItem} />
+  }, [localItems])
 
   if (isLoading) {
     return <LoadingState className={className} />
@@ -81,15 +93,7 @@ export default function List({
           </SortableContent>
 
           <SortableOverlay>
-            {({ value }) => {
-              const draggedItem = localItems.find((item) => item.id === value) || {
-                id: -1,
-                value: "Dragging item...",
-                index: -1,
-                selected: false,
-              }
-              return <DragOverlayItem item={draggedItem} />
-            }}
+            {dragOverlay}
           </SortableOverlay>
         </Sortable>
 

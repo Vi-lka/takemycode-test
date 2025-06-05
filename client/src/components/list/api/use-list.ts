@@ -45,11 +45,12 @@ export default function useList() {
     count: hasNextPage ? localItems.length + 1 : localItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 49,
-    measureElement:
-      typeof window !== 'undefined' &&
-      navigator.userAgent.indexOf('Firefox') === -1
-        ? element => element?.getBoundingClientRect().height
-        : undefined,
+    // This for dynamic height, but it consumes more resources.
+    // measureElement:
+    //   typeof window !== 'undefined' &&
+    //   navigator.userAgent.indexOf('Firefox') === -1
+    //     ? element => element?.getBoundingClientRect().height
+    //     : undefined,
     overscan: 2,
   })
 

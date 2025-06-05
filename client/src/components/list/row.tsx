@@ -1,5 +1,4 @@
 import type { Item } from '@/lib/schema'
-import type { VirtualItem } from '@tanstack/react-virtual'
 import React, { memo } from 'react'
 import { SortableItem, SortableItemHandle } from '../ui/sortable'
 import { cn } from '@/lib/utils'
@@ -8,20 +7,24 @@ import ListItem from './item'
 
 interface ListRowProps {
   item: Item
-  virtualItem: VirtualItem
+  // virtualizer: Virtualizer<HTMLDivElement, Element>
+  // virtualItem: VirtualItem
   onSelect: (id: number, selected: boolean) => void
   style?: React.CSSProperties
 }
 
 const ListRow = memo(({ 
   item, 
-  virtualItem, 
+  // virtualizer,
+  // virtualItem, 
   onSelect, 
   style 
 }: ListRowProps) => {
   return (
     <SortableItem
-      data-index={virtualItem.index}
+      // This for dynamic height, but it consumes more resources.
+      // data-index={virtualItem.index}
+      // ref={node => virtualizer.measureElement(node)} 
       value={item.id}
       style={style}
     >
