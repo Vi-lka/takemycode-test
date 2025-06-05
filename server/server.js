@@ -19,7 +19,14 @@ const requireApiKey = (req, res, next) => {
   next();
 };
 
-app.use(cors());
+const corsOptions = {
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-api-key'],
+  credentials: false,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(requireApiKey);
 
