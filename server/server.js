@@ -1,11 +1,27 @@
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config(); 
 
 const app = express();
 const PORT = 3001;
 
+// API key middleware
+const requireApiKey = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  const validApiKey = process.env.API_KEY || 'your-secret-api-key';
+
+  if (!apiKey || apiKey !== validApiKey) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid or missing API key' 
+    });
+  }
+  next();
+};
+
 app.use(cors());
 app.use(express.json());
+app.use(requireApiKey);
 
 let data = {
   items: Array.from({ length: 1000000 }, (_, i) => ({

@@ -1,7 +1,8 @@
 import type z from "zod";
 import { FetchItemsParamsSchema, FetchItemsResponseSchema, FetchSelectedItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
 
-const API_BASE = import.meta.env.API_BASE || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+const API_KEY = import.meta.env.VITE_API_KEY || 'your-secret-api-key';
 
 async function apiRequest<TResponse, TParams = void>(
   url: string,
@@ -15,10 +16,13 @@ async function apiRequest<TResponse, TParams = void>(
       params = paramsSchema.parse(params)
     }
 
+    console.log(API_BASE)
+
     const response = await fetch(url, {
       ...options,
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": API_KEY,
         ...options.headers,
       },
     })

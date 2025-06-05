@@ -68,7 +68,7 @@ export default function List({
   }
 
   if (error) {
-    return <ErrorState className={className} onRetry={refetch} />
+    return <ErrorState error={error} className={className} onRetry={refetch} />
   }
 
   return (
@@ -118,9 +118,10 @@ const LoadingState = memo(({ className }: { className?: string }) => (
   </div>
 ))
 
-const ErrorState = memo(({ className, onRetry }: { className?: string; onRetry: () => void }) => (
+const ErrorState = memo(({ error, className, onRetry }: { error: Error, className?: string; onRetry: () => void }) => (
   <div className={cn("flex flex-col items-center justify-center h-[calc(100vh-260px)] text-center text-destructive p-4", className)}>
     <p>Error loading data. Please try again.</p>
+    <span>Error: {error.message}</span>
     <Button onClick={onRetry} className="mt-2 cursor-pointer">
       Retry
     </Button>
