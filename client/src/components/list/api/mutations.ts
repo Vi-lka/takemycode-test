@@ -80,7 +80,7 @@ export function useOrderMutation(searchQuery: string) {
   return useMutation({
     mutationKey: ['order'],
     mutationFn: updateOrder,
-    onMutate: async ({ orderedItems }) => {
+    onMutate: async ({ activeIndex, overIndex }) => {
       await queryClient.cancelQueries({ queryKey: ["listData", searchQuery] })
 
       const previousData = queryClient.getQueryData(["listData", searchQuery])
@@ -89,21 +89,63 @@ export function useOrderMutation(searchQuery: string) {
       queryClient.setQueryData<InfiniteData<FetchItemsResponse>>(["listData", searchQuery], (oldData) => {
         if (!oldData) return oldData
 
-        // Create a map of id to new index
-        const indexMap = new Map(orderedItems.map((item) => [item.id, item.index]))
+        const allItems = oldData.pages.flatMap(page => page.items)
 
-        const allItems = oldData.pages.flatMap((page) => 
+        const movedItem = allItems[activeIndex];
+        const targetItem = allItems[overIndex];
+
+        const movedItemNewIndex = targetItem.reorderedIndex ?? targetItem.defaultIndex;;
+
+        const isMovingUp = activeIndex > overIndex;
+        const startIdx = Math.min(activeIndex, overIndex);
+        const endIdx = Math.max(activeIndex, overIndex);
+
+        const moves: { itemId: number; newIndex: number }[] = [];
+        const reorderedItems = [...allItems];
+
+        // Perform the move in the array for reference
+        const [moved] = reorderedItems.splice(activeIndex, 1);
+        reorderedItems.splice(overIndex, 0, moved);
+
+        // Update indices for affected items based on their index
+        for (let i = startIdx; i <= endIdx; i++) {
+          const item = reorderedItems[i];
+        
+          const itemId = item.id;
+          let newIndex: number;
+        
+          if (itemId === movedItem.id) {
+            // moved item gets the target item's original index
+            newIndex = movedItemNewIndex;
+          } else if (isMovingUp) {
+            // shift down
+            newIndex = (item.reorderedIndex ?? item.defaultIndex) + 1;
+          } else {
+            // shift up
+            newIndex = (item.reorderedIndex ?? item.defaultIndex) - 1;
+          }
+        
+          moves.push({
+            itemId,
+            newIndex,
+          });
+        }
+
+        // Create a map of id to new index
+        const moveMap = new Map(moves.map((move) => [move.itemId, move.newIndex]))
+
+        const newItems = oldData.pages.flatMap((page) => 
           page.items.map((item) => ({
             ...item,
-            index: indexMap.get(item.id) ?? item.index,
+            reorderedIndex: moveMap.get(item.id) ?? item.reorderedIndex,
           }))
         )
-        allItems.sort((a, b) => a.index - b.index)
+        newItems.sort((a, b) => (a.reorderedIndex ?? a.defaultIndex) - (b.reorderedIndex ?? b.defaultIndex))
 
         const updatedPages = oldData.pages.map((page, pageIndex) => {
           const startIndex = pageIndex * ITEMS_PER_PAGE
           const endIndex = startIndex + ITEMS_PER_PAGE
-          const pageItems = allItems.slice(startIndex, endIndex)
+          const pageItems = newItems.slice(startIndex, endIndex)
               
           return {
             ...page,
@@ -168,15 +210,20 @@ export function useResetOrderMutation() {
           items: page.items
             .map((item) => ({
               ...item,
-              index: item.id - 1
+              reorderedIndex: null,
             }))
-            .sort((a, b) => a.index - b.index),
+            .sort((a, b) => a.defaultIndex - b.defaultIndex)
         }))
 
         return {
           ...oldData,
           pages: updatedPages,
         }
+      })
+
+      toast.loading("Resetting order...", { 
+        id: `reset-order-loading`,
+        duration: Infinity 
       })
 
       // Return a context object with the snapshotted value
@@ -194,6 +241,7 @@ export function useResetOrderMutation() {
       toast.success("Order reset")
     },
     onSettled: () => {
+      toast.dismiss(`reset-order-loading`)
       queryClient.invalidateQueries({ queryKey: ["listData"] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
     },

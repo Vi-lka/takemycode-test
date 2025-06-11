@@ -22,7 +22,6 @@ export default function useList() {
         page: pageParam,
         search: searchQuery,
         limit: ITEMS_PER_PAGE,
-        useCustomOrder: true,
       }),
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.currentPage + 1 : undefined),
     initialPageParam: 1,
@@ -92,49 +91,17 @@ export default function useList() {
   const handleMove = useCallback((event: { activeIndex: number; overIndex: number }) => {
     const { activeIndex, overIndex } = event
 
+    const movedItem = localItems[activeIndex];
+    const targetItem = localItems[overIndex];
+
     const newItems = arrayMove(localItems, activeIndex, overIndex)
     setLocalItems(newItems)
 
-    const movedItem = serverItems[activeIndex];
-    const targetItem = serverItems[overIndex];
-    const movedItemNewIndex = targetItem.index;
-    
-    const isMovingUp = activeIndex > overIndex;
-    const startIdx = Math.min(activeIndex, overIndex);
-    const endIdx = Math.max(activeIndex, overIndex);
-    
-    const orderedItems: { id: number; index: number }[] = [];
-    const reorderedItems = [...serverItems];
-    
-    // Perform the move in the array for reference
-    const [moved] = reorderedItems.splice(activeIndex, 1);
-    reorderedItems.splice(overIndex, 0, moved);
-    
-    // Update indices for affected items based on their index field
-    for (let i = startIdx; i <= endIdx; i++) {
-      const item = reorderedItems[i];
+    const fromIndex = movedItem.reorderedIndex ?? movedItem.defaultIndex;
+    const toIndex = targetItem.reorderedIndex ?? targetItem.defaultIndex;
 
-      let newIndex: number;
-    
-      if (item.id === movedItem.id) {
-        // moved item gets the target item's original index
-        newIndex = movedItemNewIndex;
-      } else if (isMovingUp) {
-        // shift down
-        newIndex = item.index + 1;
-      } else {
-        // shift up
-        newIndex = item.index - 1;
-      }
-    
-      orderedItems.push({
-        id: item.id,
-        index: newIndex,
-      });
-    }
-
-    orderMutation.mutate({ orderedItems })
-  }, [localItems, orderMutation, serverItems, setLocalItems])
+    orderMutation.mutate({ fromIndex, toIndex, activeIndex, overIndex })
+  }, [localItems, orderMutation, setLocalItems])
 
   return {
     // State

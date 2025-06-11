@@ -1,5 +1,5 @@
 import type z from "zod";
-import { FetchItemsParamsSchema, FetchItemsResponseSchema, FetchSelectedItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
+import { FetchItemsParamsSchema, FetchItemsResponseSchema, ResetOrderResponseSchema, StatsResponseSchema, UpdateOrderParamsSchema, UpdateOrderResponseSchema, UpdateSelectionParamsSchema, UpdateSelectionResponseSchema, type FetchItemsParams, type UpdateOrderParams, type UpdateSelectionParams } from "./schema";
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
 const API_KEY = import.meta.env.VITE_API_KEY || 'your-secret-api-key';
@@ -51,7 +51,6 @@ export async function fetchItems(params: FetchItemsParams) {
     page: validParams.page.toString(),
     limit: validParams.limit.toString(),
     search: validParams.search,
-    useCustomOrder: validParams.useCustomOrder.toString(),
   })
 
   return apiRequest(
@@ -65,15 +64,11 @@ export async function fetchStats() {
   return apiRequest(`${API_BASE}/api/stats`, { method: "GET" }, StatsResponseSchema)
 }
 
-export async function fetchSelectedItems() {
-  return apiRequest(`${API_BASE}/api/items/selected`, { method: "GET" }, FetchSelectedItemsResponseSchema)
-}
-
 export async function updateSelection(params: UpdateSelectionParams) {
   return apiRequest(
     `${API_BASE}/api/items/selection`,
     {
-      method: "POST",
+      method: "PATCH",
       body: JSON.stringify(params),
     },
     UpdateSelectionResponseSchema,
@@ -86,7 +81,7 @@ export async function updateOrder(params: UpdateOrderParams) {
   return apiRequest(
     `${API_BASE}/api/items/order`,
     {
-      method: "POST",
+      method: "PATCH",
       body: JSON.stringify(params),
     },
     UpdateOrderResponseSchema,
@@ -96,5 +91,5 @@ export async function updateOrder(params: UpdateOrderParams) {
 }
 
 export async function resetOrder() {
-  return apiRequest(`${API_BASE}/api/items/order`, { method: "DELETE" }, ResetOrderResponseSchema)
+  return apiRequest(`${API_BASE}/api/items/order/reset`, { method: "PATCH" }, ResetOrderResponseSchema)
 }

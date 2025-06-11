@@ -61,6 +61,8 @@ export default function List({
       value: "Dragging item...",
       index: -1,
       selected: false,
+      defaultIndex: -1, 
+      reorderedIndex: null
     }
     return <DragOverlayItem item={draggedItem} />
   }, [localItems])

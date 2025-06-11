@@ -5,7 +5,8 @@ export const ItemSchema = z.object({
   id: z.number(),
   value: z.string(),
   selected: z.boolean(),
-  index: z.number()
+  defaultIndex: z.number(),
+  reorderedIndex: z.number().nullable()
 })
 
 // Queries
@@ -13,7 +14,6 @@ export const FetchItemsParamsSchema = z.object({
   page: z.number().int().positive().default(1),
   limit: z.number().int().positive().default(ITEMS_PER_PAGE),
   search: z.string().default(""),
-  useCustomOrder: z.boolean().default(true),
 })
 
 export const UpdateSelectionParamsSchema = z.object({
@@ -22,10 +22,10 @@ export const UpdateSelectionParamsSchema = z.object({
 })
 
 export const UpdateOrderParamsSchema = z.object({
-  orderedItems: z.array(z.object({
-    id: z.number(),
-    index: z.number(),
-  })),
+  fromIndex: z.number(),
+  toIndex: z.number(),
+  activeIndex: z.number(),
+  overIndex: z.number()
 })
 
 // Responses
@@ -42,11 +42,6 @@ export const UpdateSelectionResponseSchema = z.object({
   selectedCount: z.number().int().nonnegative(),
 })
 
-export const FetchSelectedItemsResponseSchema = z.object({
-  selectedItems: z.array(ItemSchema),
-  count: z.number().int().nonnegative(),
-})
-
 export const UpdateOrderResponseSchema = z.object({
   success: z.boolean(),
   message: z.string(),
@@ -59,13 +54,15 @@ export const ResetOrderResponseSchema = z.object({
 
 export const StatsResponseSchema = z.object({
   totalItems: z.number().int().nonnegative(),
-  selectedItems: z.array(z.number().int().nonnegative()),
-  reorderedItems: z.array(z.object({
-    id: z.number(),
-    value: z.string(),
-    index: z.number(),
-  })),
-  reorderedCount: z.number().int().nonnegative(),
+  selectedItems: z.array(ItemSchema),
+  reorderedItems: z.array(ItemSchema),
+  memoryUsage: z.object({
+    rss: z.number(),
+    heapTotal: z.number(),
+    heapUsed: z.number(),
+    external: z.number(),
+    arrayBuffers: z.number()
+  })
 })
 
 export type Item = z.infer<typeof ItemSchema>
@@ -73,7 +70,6 @@ export type FetchItemsParams = z.infer<typeof FetchItemsParamsSchema>
 export type FetchItemsResponse = z.infer<typeof FetchItemsResponseSchema>
 export type UpdateSelectionParams = z.infer<typeof UpdateSelectionParamsSchema>
 export type UpdateSelectionResponse = z.infer<typeof UpdateSelectionResponseSchema>
-export type FetchSelectedItemsResponse = z.infer<typeof FetchSelectedItemsResponseSchema>
 export type UpdateOrderParams = z.infer<typeof UpdateOrderParamsSchema>
 export type UpdateOrderResponse = z.infer<typeof UpdateOrderResponseSchema>
 export type ResetOrderResponse = z.infer<typeof ResetOrderResponseSchema>
